@@ -251,7 +251,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
                     } else {
                         Protos.BluetoothState.Builder p = Protos.BluetoothState.newBuilder();
                         p.setState(Protos.BluetoothState.State.UNAUTHORIZED);
-                        channel.invoke("state", p.build().toByteArray());
+                        invokeMethodUIThread("state", p.build().toByteArray());
                     }
 //            result.error(
 //                    "no_permissions", String.format("flutter_blue plugin requires %s for scanning", permissionScan), null);
@@ -272,7 +272,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 //                                "no_permissions", String.format("flutter_blue plugin requires %s for obtaining connected devices", permission), null);
                         Protos.BluetoothState.Builder p = Protos.BluetoothState.newBuilder();
                         p.setState(Protos.BluetoothState.State.UNAUTHORIZED);
-                        channel.invoke("state", p.build().toByteArray());
+                        invokeMethodUIThread("state", p.build().toByteArray());
                         return;
                     }
                     List<BluetoothDevice> devices = mBluetoothManager.getConnectedDevices(BluetoothProfile.GATT);
