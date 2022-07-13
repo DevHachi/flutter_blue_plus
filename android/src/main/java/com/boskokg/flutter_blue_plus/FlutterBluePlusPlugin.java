@@ -72,6 +72,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
     private EventChannel stateChannel;
     private BluetoothManager mBluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
+    private EventSink stateSink;
 
     private FlutterPluginBinding pluginBinding;
     private ActivityPluginBinding activityBinding;
@@ -251,7 +252,9 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
                     } else {
                         Protos.BluetoothState.Builder p = Protos.BluetoothState.newBuilder();
                         p.setState(Protos.BluetoothState.State.UNAUTHORIZED);
-                        invokeMethodUIThread("state", p.build().toByteArray());
+                        if(stateSink != null) {
+                            stateSink.success(p.build().toByteArray());
+                        }
                     }
 //            result.error(
 //                    "no_permissions", String.format("flutter_blue plugin requires %s for scanning", permissionScan), null);
@@ -272,7 +275,9 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 //                                "no_permissions", String.format("flutter_blue plugin requires %s for obtaining connected devices", permission), null);
                         Protos.BluetoothState.Builder p = Protos.BluetoothState.newBuilder();
                         p.setState(Protos.BluetoothState.State.UNAUTHORIZED);
-                        invokeMethodUIThread("state", p.build().toByteArray());
+                        if(stateSink != null) {
+                            stateSink.success(p.build().toByteArray());
+                        }
                         return;
                     }
                     List<BluetoothDevice> devices = mBluetoothManager.getConnectedDevices(BluetoothProfile.GATT);
@@ -300,8 +305,13 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
             case "connect": {
                 ensurePermissionBeforeAction(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? Manifest.permission.BLUETOOTH_CONNECT : null, (granted, permission) -> {
                     if (!granted) {
-                        result.error(
-                                "no_permissions", String.format("flutter_blue plugin requires %s for new connection", permission), null);
+//                        result.error(
+//                                "no_permissions", String.format("flutter_blue plugin requires %s for new connection", permission), null);
+                        Protos.BluetoothState.Builder p = Protos.BluetoothState.newBuilder();
+                        p.setState(Protos.BluetoothState.State.UNAUTHORIZED);
+                        if(stateSink != null) {
+                            stateSink.success(p.build().toByteArray());
+                        }
                         return;
                     }
                     byte[] data = call.arguments();
@@ -734,8 +744,6 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
     }
 
     private final StreamHandler stateHandler = new StreamHandler() {
-        private EventSink sink;
-
         private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -746,16 +754,16 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
                             BluetoothAdapter.ERROR);
                     switch (state) {
                         case BluetoothAdapter.STATE_OFF:
-                            sink.success(Protos.BluetoothState.newBuilder().setState(Protos.BluetoothState.State.OFF).build().toByteArray());
+                            stateSink.success(Protos.BluetoothState.newBuilder().setState(Protos.BluetoothState.State.OFF).build().toByteArray());
                             break;
                         case BluetoothAdapter.STATE_TURNING_OFF:
-                            sink.success(Protos.BluetoothState.newBuilder().setState(Protos.BluetoothState.State.TURNING_OFF).build().toByteArray());
+                            stateSink.success(Protos.BluetoothState.newBuilder().setState(Protos.BluetoothState.State.TURNING_OFF).build().toByteArray());
                             break;
                         case BluetoothAdapter.STATE_ON:
-                            sink.success(Protos.BluetoothState.newBuilder().setState(Protos.BluetoothState.State.ON).build().toByteArray());
+                            stateSink.success(Protos.BluetoothState.newBuilder().setState(Protos.BluetoothState.State.ON).build().toByteArray());
                             break;
                         case BluetoothAdapter.STATE_TURNING_ON:
-                            sink.success(Protos.BluetoothState.newBuilder().setState(Protos.BluetoothState.State.TURNING_ON).build().toByteArray());
+                            stateSink.success(Protos.BluetoothState.newBuilder().setState(Protos.BluetoothState.State.TURNING_ON).build().toByteArray());
                             break;
                     }
                 }
@@ -764,14 +772,14 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 
         @Override
         public void onListen(Object o, EventChannel.EventSink eventSink) {
-            sink = eventSink;
+            stateSink = eventSink;
             IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
             context.registerReceiver(mReceiver, filter);
         }
 
         @Override
         public void onCancel(Object o) {
-            sink = null;
+            stateSink = null;
             context.unregisterReceiver(mReceiver);
         }
     };
