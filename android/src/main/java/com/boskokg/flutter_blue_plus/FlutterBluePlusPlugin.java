@@ -245,14 +245,20 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
                         ensurePermissionBeforeAction(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? Manifest.permission.BLUETOOTH_CONNECT : null, (grantedConnect, permissionConnect) -> {
                             if (grantedConnect)
                                 startScan(call, result);
-                            else
-                                result.error(
-                                        "no_permissions", String.format("flutter_blue plugin requires %s for scanning", permissionConnect), null);
+                            else {
+                                Protos.BluetoothState.Builder p = Protos.BluetoothState.newBuilder();
+                                p.setState(Protos.BluetoothState.State.UNAUTHORIZED);
+                                if (stateSink != null) {
+                                    stateSink.success(p.build().toByteArray());
+                                }
+//                                result.error(
+//                                        "no_permissions", String.format("flutter_blue plugin requires %s for scanning", permissionConnect), null);
+                            }
                         });
                     } else {
                         Protos.BluetoothState.Builder p = Protos.BluetoothState.newBuilder();
                         p.setState(Protos.BluetoothState.State.UNAUTHORIZED);
-                        if(stateSink != null) {
+                        if (stateSink != null) {
                             stateSink.success(p.build().toByteArray());
                         }
                     }
@@ -275,7 +281,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 //                                "no_permissions", String.format("flutter_blue plugin requires %s for obtaining connected devices", permission), null);
                         Protos.BluetoothState.Builder p = Protos.BluetoothState.newBuilder();
                         p.setState(Protos.BluetoothState.State.UNAUTHORIZED);
-                        if(stateSink != null) {
+                        if (stateSink != null) {
                             stateSink.success(p.build().toByteArray());
                         }
                         return;
@@ -309,7 +315,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 //                                "no_permissions", String.format("flutter_blue plugin requires %s for new connection", permission), null);
                         Protos.BluetoothState.Builder p = Protos.BluetoothState.newBuilder();
                         p.setState(Protos.BluetoothState.State.UNAUTHORIZED);
-                        if(stateSink != null) {
+                        if (stateSink != null) {
                             stateSink.success(p.build().toByteArray());
                         }
                         return;
@@ -903,9 +909,27 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
     }
 
     private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
+        int retries = 0;
+
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             log(LogLevel.DEBUG, "[onConnectionStateChange] status: " + status + " newState: " + newState);
+//            if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+//                if (status != 133 && status != 62 || retries >= 2) {
+//                    if (!mDevices.containsKey(gatt.getDevice().getAddress())) {
+//                        gatt.close();
+//                    }
+//                    invokeMethodUIThread("DeviceState", ProtoMaker.from(gatt.getDevice(), newState).toByteArray());
+//                } else {
+//                    retries++;
+//                    BluetoothDeviceCache bluetoothDeviceCache = mDevices.get(gatt.getDevice().getAddress());
+//                    if (bluetoothDeviceCache != null) {
+//                        bluetoothDeviceCache.gatt.connect();
+//                    }
+//                }
+//            } else {
+//                invokeMethodUIThread("DeviceState", ProtoMaker.from(gatt.getDevice(), newState).toByteArray());
+//            }
             if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 if (!mDevices.containsKey(gatt.getDevice().getAddress())) {
                     gatt.close();
