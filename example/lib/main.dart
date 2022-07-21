@@ -139,11 +139,13 @@ class FindDevicesScreen extends StatelessWidget {
                       .map(
                         (r) => ScanResultTile(
                           result: r,
-                          onTap: () => Navigator.of(context)
-                              .push(MaterialPageRoute(builder: (context) {
-                            r.device.connect();
-                            return DeviceScreen(device: r.device);
-                          })),
+                          onTap: () {
+                            Navigator.of(context)
+                                .push(MaterialPageRoute(builder: (context) {
+                              r.device.connect();
+                              return DeviceScreen(device: r.device);
+                            }));
+                          },
                         ),
                       )
                       .toList(),
@@ -243,7 +245,13 @@ class DeviceScreen extends StatelessWidget {
                   text = 'DISCONNECT';
                   break;
                 case BluetoothDeviceState.disconnected:
-                  onPressed = () => device.connect();
+                  onPressed = () async {
+                    debugPrint("trying to connect");
+                    await device.connect();
+                    List<BluetoothService> service =
+                        await device.discoverServices();
+                    debugPrint("device connected");
+                  };
                   text = 'CONNECT';
                   break;
                 default:
@@ -279,11 +287,12 @@ class DeviceScreen extends StatelessWidget {
                         : const Icon(Icons.bluetooth_disabled),
                     snapshot.data == BluetoothDeviceState.connected
                         ? StreamBuilder<int>(
-                        stream: rssiStream(),
-                        builder: (context, snapshot) {
-                          return Text(snapshot.hasData ? '${snapshot.data}dBm' : '',
-                              style: Theme.of(context).textTheme.caption);
-                        })
+                            stream: rssiStream(),
+                            builder: (context, snapshot) {
+                              return Text(
+                                  snapshot.hasData ? '${snapshot.data}dBm' : '',
+                                  style: Theme.of(context).textTheme.caption);
+                            })
                         : Text('', style: Theme.of(context).textTheme.caption),
                   ],
                 ),
@@ -331,9 +340,12 @@ class DeviceScreen extends StatelessWidget {
               stream: device.services,
               initialData: const [],
               builder: (c, snapshot) {
-                return Column(
-                  children: _buildServiceTiles(snapshot.data!),
-                );
+                if (snapshot.hasData) {
+                  return Column(
+                    children: _buildServiceTiles(snapshot.data!),
+                  );
+                }
+                return const SizedBox();
               },
             ),
           ],
@@ -341,7 +353,7 @@ class DeviceScreen extends StatelessWidget {
       ),
     );
   }
-  
+
   Stream<int> rssiStream() async* {
     var isConnected = true;
     final subscription = device.state.listen((state) {

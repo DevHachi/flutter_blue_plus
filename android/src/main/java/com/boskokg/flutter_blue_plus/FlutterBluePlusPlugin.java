@@ -914,25 +914,15 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             log(LogLevel.DEBUG, "[onConnectionStateChange] status: " + status + " newState: " + newState);
-//            if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-//                if (status != 133 && status != 62 || retries >= 2) {
-//                    if (!mDevices.containsKey(gatt.getDevice().getAddress())) {
-//                        gatt.close();
-//                    }
-//                    invokeMethodUIThread("DeviceState", ProtoMaker.from(gatt.getDevice(), newState).toByteArray());
-//                } else {
-//                    retries++;
-//                    BluetoothDeviceCache bluetoothDeviceCache = mDevices.get(gatt.getDevice().getAddress());
-//                    if (bluetoothDeviceCache != null) {
-//                        bluetoothDeviceCache.gatt.connect();
-//                    }
-//                }
-//            } else {
-//                invokeMethodUIThread("DeviceState", ProtoMaker.from(gatt.getDevice(), newState).toByteArray());
-//            }
-            if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                if (!mDevices.containsKey(gatt.getDevice().getAddress())) {
-                    gatt.close();
+            if (status == 133 && retries <= 2) {
+                gatt.connect();
+                retries++;
+            } else {
+                if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    retries = 0;
+                    if (!mDevices.containsKey(gatt.getDevice().getAddress())) {
+                        gatt.close();
+                    }
                 }
             }
             invokeMethodUIThread("DeviceState", ProtoMaker.from(gatt.getDevice(), newState).toByteArray());
